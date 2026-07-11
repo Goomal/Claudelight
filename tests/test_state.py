@@ -55,3 +55,14 @@ def test_build_view_counts_and_sort():
     assert rows[2].startswith("🟢") and "api" in rows[2]
     assert rows[3].startswith("💀") and "old" in rows[3]
     assert rows[0] == "🟡  web — needs you (2m)"
+
+
+def test_build_view_tiebreak_recent_first():
+    now = 100000
+    sessions = [
+        {"project": "older", "state": "green", "updated": now - 300},
+        {"project": "newer", "state": "green", "updated": now - 10},
+    ]
+    _, rows = build_view(sessions, now)
+    assert "newer" in rows[0]
+    assert "older" in rows[1]
