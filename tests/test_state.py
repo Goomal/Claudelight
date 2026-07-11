@@ -29,3 +29,29 @@ def test_format_age():
     assert format_age(120) == "2m"
     assert format_age(840) == "14m"
     assert format_age(7200) == "1h+"
+
+
+from state import build_view
+
+
+def test_build_view_empty():
+    title, rows = build_view([], 1000)
+    assert title == "🚦"
+    assert rows == []
+
+
+def test_build_view_counts_and_sort():
+    now = 100000
+    sessions = [
+        {"project": "api", "state": "green", "updated": now - 5},
+        {"project": "docs", "state": "red", "updated": now - 60},
+        {"project": "web", "state": "yellow", "updated": now - 120},
+        {"project": "old", "state": "red", "updated": now - 7200},  # -> gray
+    ]
+    title, rows = build_view(sessions, now)
+    assert title == "🟢1 🟡1 🔴1 💀1"
+    assert rows[0].startswith("🟡") and "web" in rows[0]
+    assert rows[1].startswith("🔴") and "docs" in rows[1]
+    assert rows[2].startswith("🟢") and "api" in rows[2]
+    assert rows[3].startswith("💀") and "old" in rows[3]
+    assert rows[0] == "🟡  web — needs you (2m)"

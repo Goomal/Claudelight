@@ -35,3 +35,21 @@ def format_age(seconds):
     if seconds < 3600:
         return f"{round(seconds / 60)}m"
     return "1h+"
+
+
+def build_view(sessions, now):
+    """Pure transform: sessions -> (menu bar title, sorted row strings)."""
+    display = [(display_state(s, now), s) for s in sessions]
+
+    counts = {}
+    for state, _ in display:
+        counts[state] = counts.get(state, 0) + 1
+    parts = [f"{EMOJI[c]}{counts[c]}" for c in TITLE_ORDER if counts.get(c)]
+    title = " ".join(parts) if parts else "🚦"
+
+    display.sort(key=lambda ds: (URGENCY[ds[0]], -ds[1]["updated"]))
+    rows = [
+        f"{EMOJI[state]}  {s['project']} — {WORD[state]} ({format_age(now - s['updated'])})"
+        for state, s in display
+    ]
+    return title, rows
