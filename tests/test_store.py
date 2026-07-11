@@ -35,3 +35,14 @@ def test_load_deletes_stale(tmp_path):
     write_state("old", "p", "red", "x", now - 90000, directory=tmp_path)
     assert load_sessions(now, directory=tmp_path, stale=86400) == []
     assert not (tmp_path / "old.json").exists()
+
+
+def test_load_skips_wrong_shape_json(tmp_path):
+    (tmp_path / "scalar.json").write_text('"hello"')
+    (tmp_path / "array.json").write_text('[1, 2, 3]')
+    (tmp_path / "nullupdated.json").write_text('{"updated": null}')
+    now = time.time()
+    write_state("good", "p", "green", "x", now, directory=tmp_path)
+    sessions = load_sessions(now, directory=tmp_path)
+    assert len(sessions) == 1
+    assert sessions[0]["session_id"] == "good"
