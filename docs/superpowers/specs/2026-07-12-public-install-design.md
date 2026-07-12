@@ -32,16 +32,27 @@ macOS menu bar app (`rumps`); "everyone" means every macOS Claude Code user.
 Steps, in order:
 1. **Platform guard.** If `uname` != `Darwin`, print a clear "macOS only"
    message and exit non-zero.
-2. **Resolve home.** `CLAUDELIGHT_HOME` = absolute dir of the script.
-3. **Python venv.** Create `$CLAUDELIGHT_HOME/.venv` if absent; `pip install`
-   the pinned deps (`rumps`) into it.
-4. **Merge hooks.** Back up `~/.claude/settings.json` to `settings.json.bak`,
+2. **Preflight (F2).** Verify `python3` exists and `python3 -m venv` works. If
+   not (e.g. Command Line Tools absent), abort with a clear message telling the
+   user to run `xcode-select --install`. Never proceed to mutate settings.json
+   on a broken toolchain.
+3. **Resolve home.** `CLAUDELIGHT_HOME` = absolute dir of the script.
+4. **Python venv.** Create `$CLAUDELIGHT_HOME/.venv` if absent (`python3 -m
+   venv` ships pip via ensurepip); `pip install` the pinned deps (`rumps`) into
+   it.
+5. **Merge hooks.** Back up `~/.claude/settings.json` to `settings.json.bak`,
    then merge our 7 hook entries idempotently (see Merge logic). Creates
-   `settings.json` (and `~/.claude/`) if absent.
-5. **LaunchAgent (opt-in, `--autostart`).** Write
+   `settings.json` (and `~/.claude/`) if absent. **(F3)** If an existing
+   `settings.json` is present but not valid JSON, abort without writing —
+   report the file so the user can fix it; a partial write must never happen.
+6. **LaunchAgent (opt-in, `--autostart`).** Write
    `~/Library/LaunchAgents/com.claudelight.plist` running the venv python on
-   `app.py` at login with `KeepAlive`; `launchctl bootstrap`/`load` it. Without
-   the flag, print the manual `python3 app.py` run command instead.
+   `app.py` at login. **(F1)** `KeepAlive` = `{"SuccessfulExit": false}` so a
+   crash relaunches but a clean Quit (menu item) stays quit — otherwise launchd
+   would make the app impossible to quit. **(F4)** Load with
+   `launchctl bootstrap gui/$(id -u) <plist>`, falling back to
+   `launchctl load -w <plist>` on older macOS. Without the flag, print the
+   manual `.venv/bin/python3 app.py` run command instead.
 
 Re-running `install.sh` is safe: venv reused, hooks not duplicated, plist
 overwritten and reloaded.
@@ -68,7 +79,8 @@ directly.
 
 ## `uninstall.sh`
 
-1. `launchctl bootout`/`unload` and remove `com.claudelight.plist` if present.
+1. `launchctl bootout gui/$(id -u) <plist>` (fallback `launchctl unload`) and
+   remove `com.claudelight.plist` if present.
 2. Back up `settings.json`, run `strip_hooks`, write it back.
 3. Leave the state dir (`~/.claude/trafficlight`) and the clone in place unless
    `--purge` is passed, which also removes the state dir and `.venv`.
@@ -93,3 +105,7 @@ directly.
 - `pytest` green (existing + new installer tests).
 - Dry-run `install.sh` against a temp `HOME` to confirm settings merge and venv
   creation without touching the real environment.
+- **(F5) Manual acceptance** (not unit-testable, needs a GUI session): fresh
+  clone → `./install.sh --autostart` → open a Claude Code session → the traffic
+  light appears in the menu bar and turns green on first prompt. LaunchAgent
+  relaunch-on-crash and quit-stays-quit are verified by hand.
