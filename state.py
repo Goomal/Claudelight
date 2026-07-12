@@ -1,5 +1,5 @@
 EVENT_TO_STATE = {
-    "SessionStart": "green",
+    "SessionStart": "red",  # freshly opened = idle, not working; goes green on first prompt
     "UserPromptSubmit": "green",
     "PreToolUse": "green",
     "PostToolUse": "green",

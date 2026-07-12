@@ -2,7 +2,7 @@ from state import event_to_state, display_state, format_age
 
 
 def test_event_to_state_mapping():
-    assert event_to_state("SessionStart") == "green"
+    assert event_to_state("SessionStart") == "red"
     assert event_to_state("UserPromptSubmit") == "green"
     assert event_to_state("PreToolUse") == "green"
     assert event_to_state("PostToolUse") == "green"
