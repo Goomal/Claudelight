@@ -19,6 +19,24 @@ def test_handle_notification_is_yellow(tmp_path):
     assert load_sessions(now, directory=tmp_path)[0]["state"] == "yellow"
 
 
+def test_notification_does_not_overwrite_red(tmp_path):
+    now = time.time()
+    handle({"hook_event_name": "Stop", "session_id": "s1", "cwd": "/a/b"},
+           now, directory=tmp_path)
+    handle({"hook_event_name": "Notification", "session_id": "s1", "cwd": "/a/b"},
+           now, directory=tmp_path)
+    assert load_sessions(now, directory=tmp_path)[0]["state"] == "red"
+
+
+def test_notification_overwrites_green(tmp_path):
+    now = time.time()
+    handle({"hook_event_name": "PreToolUse", "session_id": "s1", "cwd": "/a/b"},
+           now, directory=tmp_path)
+    handle({"hook_event_name": "Notification", "session_id": "s1", "cwd": "/a/b"},
+           now, directory=tmp_path)
+    assert load_sessions(now, directory=tmp_path)[0]["state"] == "yellow"
+
+
 def test_handle_session_end_deletes(tmp_path):
     now = time.time()
     handle({"hook_event_name": "Stop", "session_id": "s1", "cwd": "/a/b"},

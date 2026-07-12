@@ -6,7 +6,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from state import event_to_state
-from store import write_state, delete_state
+from store import write_state, delete_state, read_state
 
 
 def handle(payload, now, directory=None):
@@ -17,6 +17,10 @@ def handle(payload, now, directory=None):
     if state == "delete":
         delete_state(session_id, directory)
     elif state in ("green", "yellow", "red"):
+        if state == "yellow":
+            current = read_state(session_id, directory)
+            if current and current.get("state") == "red":
+                return  # idle notification after a finished turn — stay red
         project = os.path.basename(payload.get("cwd", "").rstrip("/")) or "unknown"
         write_state(session_id, project, state, payload.get("hook_event_name"),
                     now, directory)

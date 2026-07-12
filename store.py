@@ -27,6 +27,14 @@ def write_state(session_id, project, state, reason, now, directory=None):
     os.replace(tmp, final)  # atomic rename
 
 
+def read_state(session_id, directory=None):
+    directory = Path(directory) if directory is not None else state_dir()
+    try:
+        return json.loads((directory / f"{session_id}.json").read_text())
+    except (ValueError, OSError):
+        return None
+
+
 def delete_state(session_id, directory=None):
     directory = Path(directory) if directory is not None else state_dir()
     try:
