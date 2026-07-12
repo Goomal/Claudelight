@@ -7,6 +7,16 @@ macOS menu bar traffic light for your Claude Code sessions.
 - 🔴 red — finished its turn
 - 💀 gray — finished and untouched for over an hour
 
+## Reading the menu bar
+
+The number beside each icon is **how many sessions are in that state**. So
+`🟢2 🟡1 🔴3` means two sessions working, one waiting on you, three finished.
+Only non-zero states appear, ordered green → yellow → red → gray. With no
+active sessions the icon falls back to a plain `🚦`.
+
+Click the icon to drop down the per-session list — each row shows the project,
+its state, and how long since it last changed, sorted most-urgent first.
+
 ## Install
 
 ```bash
