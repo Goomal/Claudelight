@@ -66,3 +66,41 @@ def test_build_view_tiebreak_recent_first():
     _, rows = build_view(sessions, now)
     assert "newer" in rows[0]
     assert "older" in rows[1]
+
+
+from state import dominant_state
+
+
+def test_dominant_state_empty_is_none():
+    assert dominant_state([], 1000) is None
+
+
+def test_dominant_state_yellow_wins():
+    now = 100000
+    sessions = [
+        {"state": "green", "updated": now - 5},
+        {"state": "red", "updated": now - 5},
+        {"state": "yellow", "updated": now - 5},
+    ]
+    assert dominant_state(sessions, now) == "yellow"
+
+
+def test_dominant_state_urgency_order():
+    now = 100000
+    assert dominant_state([{"state": "red", "updated": now}], now) == "red"
+    assert dominant_state(
+        [{"state": "green", "updated": now}, {"state": "red", "updated": now}], now
+    ) == "red"
+    assert dominant_state([{"state": "green", "updated": now}], now) == "green"
+
+
+def test_dominant_state_applies_gray_staleness():
+    now = 100000
+    # a lone stale red -> gray
+    assert dominant_state([{"state": "red", "updated": now - 7200}], now) == "gray"
+    # green outranks a grayed-out red
+    sessions = [
+        {"state": "red", "updated": now - 7200},
+        {"state": "green", "updated": now - 5},
+    ]
+    assert dominant_state(sessions, now) == "green"

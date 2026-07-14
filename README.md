@@ -1,32 +1,52 @@
 # Claudelight 🚦
 
-macOS menu bar traffic light for your Claude Code sessions.
+Menu bar / system tray traffic light for your Claude Code sessions. Runs on
+**macOS** (menu bar) and **Windows** (system tray).
 
 - 🟢 green — Claude is working
 - 🟡 yellow — needs your attention (blocked / waiting)
 - 🔴 red — finished its turn
 - 💀 gray — finished and untouched for over an hour
 
-## Reading the menu bar
+## Reading it
 
-The number beside each icon is **how many sessions are in that state**. So
-`🟢2 🟡1 🔴3` means two sessions working, one waiting on you, three finished.
-Only non-zero states appear, ordered green → yellow → red → gray. With no
-active sessions the icon falls back to a plain `🚦`.
+**macOS.** The number beside each icon is **how many sessions are in that
+state**. So `🟢2 🟡1 🔴3` means two sessions working, one waiting on you, three
+finished. Only non-zero states appear, ordered green → yellow → red → gray.
+With no active sessions the icon falls back to a plain `🚦`.
 
 Click the icon to drop down the per-session list — each row shows the project,
 its state, and how long since it last changed, sorted most-urgent first.
 
+**Windows.** The tray has no room for text, so the icon paints the single
+**most-urgent** state (yellow → red → green → gray, or a plain 🚦 when idle).
+Hover for the full counts (`🟢2 🟡1 🔴3`) in the tooltip; right-click for the
+per-session list and Quit.
+
 ## Install
 
+Installs only the deps for your platform (rumps on macOS; pystray + Pillow on
+Windows) via environment markers in `requirements.txt`.
+
 ```bash
+# macOS
 python3 -m pip install -r requirements.txt
+
+# Windows
+python -m pip install -r requirements.txt
 ```
 
 ## Wire the hooks
 
-Add this to `~/.claude/settings.json` (merge into an existing `hooks` block if
-you have one). Replace `/ABS/PATH` with this repo's absolute path.
+Add this to your Claude Code `settings.json` (merge into an existing `hooks`
+block if you have one). On macOS that's `~/.claude/settings.json`; on Windows,
+`%USERPROFILE%\.claude\settings.json`.
+
+Replace the `python3 /ABS/PATH/hook.py` command with the right interpreter and
+absolute path for your OS:
+
+- **macOS:** `python3 /ABS/PATH/hook.py`
+- **Windows:** `python C:\\ABS\\PATH\\hook.py` (double the backslashes — it's JSON)
 
 ```json
 {
@@ -45,7 +65,11 @@ you have one). Replace `/ABS/PATH` with this repo's absolute path.
 ## Run
 
 ```bash
+# macOS
 python3 app.py
+
+# Windows
+python app.py
 ```
 
 Leave it running. New Claude sessions appear automatically. Sessions started

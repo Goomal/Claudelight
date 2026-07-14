@@ -37,6 +37,19 @@ def format_age(seconds):
     return "1h+"
 
 
+def dominant_state(sessions, now):
+    """Single most-urgent present state, or None when there are no sessions.
+
+    Applies the gray-staleness rule, then picks by URGENCY (yellow > red >
+    green > gray). Used to color a single-icon tray (Windows) where the full
+    per-state count can't be shown as text.
+    """
+    states = [display_state(s, now) for s in sessions]
+    if not states:
+        return None
+    return min(states, key=lambda s: URGENCY[s])
+
+
 def build_view(sessions, now):
     """Pure transform: sessions -> (menu bar title, sorted row strings)."""
     display = [(display_state(s, now), s) for s in sessions]
