@@ -30,11 +30,19 @@ Windows) via environment markers in `requirements.txt`.
 
 ```bash
 # macOS
-python3 -m pip install -r requirements.txt
+python3 -m pip install --user -r requirements.txt
 
 # Windows
 python -m pip install -r requirements.txt
 ```
+
+> **macOS note:** Homebrew's Python is "externally managed" (PEP 668) and
+> refuses the command above with `error: externally-managed-environment`. If you
+> hit that, add `--break-system-packages`:
+>
+> ```bash
+> python3 -m pip install --user --break-system-packages -r requirements.txt
+> ```
 
 ## Wire the hooks
 
