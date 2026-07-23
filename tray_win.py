@@ -11,8 +11,8 @@ from pathlib import Path
 import pystray
 from PIL import Image
 
-from state import build_view, dominant_state
-from store import load_sessions
+from state import EMOJI, build_view, dominant_state, stale_ids
+from store import delete_state, load_sessions
 
 ASSETS = Path(__file__).resolve().parent / "assets"
 _ICON_CACHE = {}
@@ -32,23 +32,32 @@ def _snapshot(now):
     except Exception:
         sessions = []
     title, rows = build_view(sessions, now)
-    return title, rows, dominant_state(sessions, now)
+    return title, rows, dominant_state(sessions, now), stale_ids(sessions, now)
 
 
-def _build_menu(rows, icon):
+def _clear_stale(icon, stale):
+    for session_id in stale:
+        delete_state(session_id)
+    _refresh(icon)
+
+
+def _build_menu(rows, stale, icon):
     items = [pystray.MenuItem(row, None, enabled=False) for row in rows]
     if items:
         items.append(pystray.Menu.SEPARATOR)
+    if stale:
+        items.append(pystray.MenuItem(f"Clear {EMOJI['gray']} ({len(stale)})",
+                                      lambda: _clear_stale(icon, stale)))
     items.append(pystray.MenuItem("Quit", lambda: icon.stop()))
     return pystray.Menu(*items)
 
 
 def _refresh(icon):
     now = time.time()
-    title, rows, state = _snapshot(now)
+    title, rows, state, stale = _snapshot(now)
     icon.icon = _icon_image(state)
     icon.title = title
-    icon.menu = _build_menu(rows, icon)
+    icon.menu = _build_menu(rows, stale, icon)
     icon.update_menu()
 
 

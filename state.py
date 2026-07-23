@@ -50,6 +50,15 @@ def dominant_state(sessions, now):
     return min(states, key=lambda s: URGENCY[s])
 
 
+def stale_ids(sessions, now):
+    """Session ids displaying as gray — dead sessions the tray can clear.
+
+    These are sessions whose SessionEnd hook never fired (terminal closed or
+    killed), so their file lingers until the 24h store sweep.
+    """
+    return [s["session_id"] for s in sessions if display_state(s, now) == "gray"]
+
+
 def build_view(sessions, now):
     """Pure transform: sessions -> (menu bar title, sorted row strings)."""
     display = [(display_state(s, now), s) for s in sessions]

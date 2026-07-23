@@ -1,4 +1,4 @@
-from state import event_to_state, display_state, format_age
+from state import event_to_state, display_state, format_age, stale_ids
 
 
 def test_event_to_state_mapping():
@@ -104,3 +104,18 @@ def test_dominant_state_applies_gray_staleness():
         {"state": "green", "updated": now - 5},
     ]
     assert dominant_state(sessions, now) == "green"
+
+
+def test_stale_ids_picks_only_gray():
+    now = 10000
+    sessions = [
+        {"session_id": "dead", "state": "red", "updated": now - 7200},
+        {"session_id": "fresh_red", "state": "red", "updated": now - 60},
+        {"session_id": "old_green", "state": "green", "updated": now - 7200},
+        {"session_id": "old_yellow", "state": "yellow", "updated": now - 7200},
+    ]
+    assert stale_ids(sessions, now) == ["dead"]
+
+
+def test_stale_ids_empty():
+    assert stale_ids([], 10000) == []
