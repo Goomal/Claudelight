@@ -9,6 +9,7 @@ def test_event_to_state_mapping():
     assert event_to_state("Notification") == "yellow"
     assert event_to_state("Stop") == "red"
     assert event_to_state("SessionEnd") == "delete"
+    assert event_to_state("SubagentStop") == "revert"
     assert event_to_state("PreCompact") is None
 
 
@@ -119,3 +120,13 @@ def test_stale_ids_picks_only_gray():
 
 def test_stale_ids_empty():
     assert stale_ids([], 10000) == []
+
+
+def test_notification_state_depends_on_notification_type():
+    assert event_to_state("Notification", "permission_prompt") == "yellow"
+    assert event_to_state("Notification", "worker_permission_prompt") == "yellow"
+    assert event_to_state("Notification", "agent_needs_input") == "yellow"
+    assert event_to_state("Notification", "idle_prompt") is None
+    assert event_to_state("Notification", "agent_completed") is None
+    assert event_to_state("Notification", "auth_success") is None
+    assert event_to_state("Notification", None) == "yellow"  # pre-2.1 payloads

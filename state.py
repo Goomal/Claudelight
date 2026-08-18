@@ -5,10 +5,20 @@ EVENT_TO_STATE = {
     "PostToolUse": "green",
     "Notification": "yellow",
     "Stop": "red",
+    "SubagentStop": "revert",  # hand the row back to the main thread
     "SessionEnd": "delete",
 }
 
 GRAY_AFTER = 3600  # a red session older than this displays as gray
+
+# Claude Code sends a Notification for many things; only these mean the session
+# is blocked on the user. The rest (idle_prompt, agent_completed, auth_success,
+# quota_*, computer_use_*, elicitation_*) fire while work is still running.
+NEEDS_YOU_NOTIFICATIONS = {
+    "permission_prompt",
+    "worker_permission_prompt",
+    "agent_needs_input",
+}
 
 EMOJI = {"green": "🟢", "yellow": "🟡", "red": "🔴", "gray": "💀"}
 WORD = {"green": "working", "yellow": "needs you", "red": "done", "gray": "done"}
@@ -16,8 +26,17 @@ TITLE_ORDER = ["green", "yellow", "red", "gray"]  # menu bar count order
 URGENCY = {"yellow": 0, "red": 1, "green": 2, "gray": 3}  # dropdown sort order
 
 
-def event_to_state(event_name):
-    """Map a hook event name to a state, 'delete', or None if unhandled."""
+def event_to_state(event_name, notification_type=None):
+    """Map a hook event name to a state, 'delete', or None if unhandled.
+
+    `notification_type` narrows Notification down to the kinds that actually
+    need the user. Builds before it existed send no type, so a missing one
+    keeps the old always-yellow behaviour.
+    """
+    if event_name == "Notification":
+        if notification_type and notification_type not in NEEDS_YOU_NOTIFICATIONS:
+            return None
+        return "yellow"
     return EVENT_TO_STATE.get(event_name)
 
 

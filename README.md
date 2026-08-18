@@ -18,6 +18,14 @@ With no active sessions the icon falls back to a plain `🚦`.
 Click the icon to drop down the per-session list — each row shows the project,
 its state, and how long since it last changed, sorted most-urgent first.
 
+**Sub-agents.** A session's sub-agents share its session id and run alongside
+the main thread, so one session is still one row. Their activity keeps the row
+green, but it never clears a 🟡 raised by someone else — only the thread that
+raised the prompt can lower it — and their worktree never renames the project.
+Yellow is reserved for the notifications that really need you (permission
+prompts, an agent asking for input); idle and "agent finished" pings do not
+repaint a running session.
+
 **Windows.** The tray has no room for text, so the icon paints the single
 **most-urgent** state (yellow → red → green → gray, or a plain 🚦 when idle).
 Hover for the full counts (`🟢2 🟡1 🔴3`) in the tooltip; right-click for the
@@ -65,6 +73,7 @@ absolute path for your OS:
     "PostToolUse":      [{"matcher": "", "hooks": [{"type": "command", "command": "python3 /ABS/PATH/hook.py"}]}],
     "Notification":     [{"hooks": [{"type": "command", "command": "python3 /ABS/PATH/hook.py"}]}],
     "Stop":             [{"hooks": [{"type": "command", "command": "python3 /ABS/PATH/hook.py"}]}],
+    "SubagentStop":     [{"hooks": [{"type": "command", "command": "python3 /ABS/PATH/hook.py"}]}],
     "SessionEnd":       [{"hooks": [{"type": "command", "command": "python3 /ABS/PATH/hook.py"}]}]
   }
 }

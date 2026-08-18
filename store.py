@@ -12,7 +12,8 @@ def state_dir():
     return path
 
 
-def write_state(session_id, project, state, reason, now, directory=None):
+def write_state(session_id, project, state, reason, now, directory=None,
+                origin=None, main_state=None):
     directory = Path(directory) if directory is not None else state_dir()
     final = directory / f"{session_id}.json"
     tmp = directory / f".{session_id}.json.tmp"
@@ -22,6 +23,8 @@ def write_state(session_id, project, state, reason, now, directory=None):
         "state": state,
         "reason": reason,
         "updated": int(now),
+        "origin": origin,  # agent_id that wrote this, or None for the main thread
+        "main_state": main_state,  # last state the main thread was in
     }
     tmp.write_text(json.dumps(data))
     os.replace(tmp, final)  # atomic rename
