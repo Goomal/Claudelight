@@ -5,7 +5,8 @@ Menu bar / system tray traffic light for your Claude Code sessions. Runs on
 
 - 🟢 green — Claude is working
 - 🟡 yellow — needs your attention (blocked / waiting)
-- 🔴 red — finished its turn
+- 🔴 red — finished its turn (a turn that ends while a background task still
+  runs stays 🟢 — the task's completion re-invokes the session)
 - 💀 gray — finished and untouched for over an hour
 
 ## Reading it

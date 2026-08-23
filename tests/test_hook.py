@@ -1,3 +1,4 @@
+import json
 import time
 from hook import handle
 from store import load_sessions
@@ -167,3 +168,54 @@ def test_subagent_stop_does_not_resurrect_an_unknown_session(tmp_path):
     handle({"hook_event_name": "SubagentStop", "session_id": "s1", "cwd": "/a/b",
             "agent_id": "a1"}, now, directory=tmp_path)
     assert load_sessions(now, directory=tmp_path) == []
+
+
+# --- a Stop while a background task still runs is not "done" ----------------
+# Background Bash commands fire no hooks while running, so the transcript is
+# the only record: launch leaves "Command running in background with ID: x",
+# completion injects a <task-id>x</task-id> notification, a kill is a TaskStop
+# tool call. Entry shapes below mirror a live capture (Claude Code 2.1.241).
+
+BG_START = {"type": "user", "message": {"role": "user", "content": [
+    {"type": "tool_result", "tool_use_id": "t1",
+     "content": "Command running in background with ID: bmwp2jcqv. Output is "
+                "being written to /tmp/tasks/bmwp2jcqv.output"}]}}
+BG_DONE = {"type": "user", "message": {"role": "user", "content":
+    "<task-notification>\n<task-id>bmwp2jcqv</task-id>\n"
+    "<status>completed</status>\n</task-notification>"}}
+BG_KILL = {"type": "assistant", "message": {"content": [
+    {"type": "tool_use", "name": "TaskStop", "input": {"task_id": "bmwp2jcqv"}}]}}
+BG_PEEK = {"type": "assistant", "message": {"content": [
+    {"type": "tool_use", "name": "TaskOutput", "input": {"task_id": "bmwp2jcqv"}}]}}
+
+
+def _transcript(tmp_path, entries):
+    path = tmp_path / "transcript.jsonl"
+    path.write_text("".join(json.dumps(e) + "\n" for e in entries))
+    return str(path)
+
+
+def _stop(tmp_path, entries, now):
+    handle({"hook_event_name": "Stop", "session_id": "s1", "cwd": "/a/b",
+            "transcript_path": _transcript(tmp_path, entries)},
+           now, directory=tmp_path)
+    return load_sessions(now, directory=tmp_path)[0]["state"]
+
+
+def test_stop_with_running_background_task_stays_green(tmp_path):
+    assert _stop(tmp_path, [BG_START, BG_PEEK], time.time()) == "green"
+
+
+def test_stop_after_background_task_finished_is_red(tmp_path):
+    assert _stop(tmp_path, [BG_START, BG_DONE], time.time()) == "red"
+
+
+def test_stop_after_background_task_killed_is_red(tmp_path):
+    assert _stop(tmp_path, [BG_START, BG_KILL], time.time()) == "red"
+
+
+def test_stop_without_transcript_is_red(tmp_path):
+    now = time.time()
+    handle({"hook_event_name": "Stop", "session_id": "s1", "cwd": "/a/b"},
+           now, directory=tmp_path)
+    assert load_sessions(now, directory=tmp_path)[0]["state"] == "red"

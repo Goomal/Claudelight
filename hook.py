@@ -1,12 +1,70 @@
 #!/usr/bin/env python3
 import json
 import os
+import re
 import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from state import event_to_state
 from store import write_state, delete_state, read_state
+
+TASK_STARTED = re.compile(r"^Command running in background with ID: (\w+)\.")
+TASK_DONE = re.compile(r"<task-id>(\w+)</task-id>")
+
+
+def _tool_result_texts(item):
+    content = item.get("content")
+    if isinstance(content, str):
+        yield content
+    elif isinstance(content, list):
+        for part in content:
+            if isinstance(part, dict) and isinstance(part.get("text"), str):
+                yield part["text"]
+
+
+def _scan_entry(entry, started, ended):
+    content = entry.get("message", {}).get("content")
+    if not isinstance(content, list):
+        return
+    for item in content:
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") == "tool_result":
+            for text in _tool_result_texts(item):
+                match = TASK_STARTED.match(text)
+                if match:
+                    started.add(match.group(1))
+        elif item.get("type") == "tool_use" and item.get("name") == "TaskStop":
+            task_id = (item.get("input") or {}).get("task_id")
+            if task_id:
+                ended.add(task_id)
+
+
+def has_pending_task(transcript_path):
+    """True when a background task was launched but has not ended.
+
+    Background Bash commands fire no hooks while they run, so at Stop time the
+    transcript is the only record: a launch leaves "Command running in
+    background with ID: x" in a tool result, completion injects a
+    <task-id>x</task-id> notification, and a kill is a TaskStop tool call.
+    """
+    if not transcript_path:
+        return False
+    started, ended = set(), set()
+    try:
+        with open(transcript_path) as f:
+            for line in f:
+                if "task-id>" in line:
+                    ended.update(TASK_DONE.findall(line))
+                if "Command running in background" in line or "TaskStop" in line:
+                    try:
+                        _scan_entry(json.loads(line), started, ended)
+                    except ValueError:
+                        continue
+    except OSError:
+        return False
+    return bool(started - ended)
 
 
 def project_name(payload, current, agent_id):
@@ -27,6 +85,10 @@ def handle(payload, now, directory=None):
         return
     if state not in ("green", "yellow", "red", "revert"):
         return  # unhandled events are ignored
+    if payload.get("hook_event_name") == "Stop" \
+            and has_pending_task(payload.get("transcript_path")):
+        state = "green"  # turn ended, but a background task still runs and
+        # its completion will re-invoke the session — that's working, not done
 
     # Sub-agents share the parent's session_id and run concurrently with it,
     # so an event's agent_id says which thread it came from (None = main).
