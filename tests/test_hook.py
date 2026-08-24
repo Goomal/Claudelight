@@ -219,3 +219,34 @@ def test_stop_without_transcript_is_red(tmp_path):
     handle({"hook_event_name": "Stop", "session_id": "s1", "cwd": "/a/b"},
            now, directory=tmp_path)
     assert load_sessions(now, directory=tmp_path)[0]["state"] == "red"
+
+
+# --- background sub-agents leave the same completion marker, but a different
+# launch marker: "Async agent launched successfully. ... agentId: x". Entry
+# shapes mirror a live capture (Claude Fable 5, 2026-08-24).
+
+AGENT_START = {"type": "user", "message": {"role": "user", "content": [
+    {"type": "tool_result", "tool_use_id": "t2", "content": [
+        {"type": "text",
+         "text": "Async agent launched successfully. (This tool result is "
+                 "internal metadata — never quote or paste any part of it.)\n"
+                 "agentId: ab5e6bea66dbee1fc (internal ID - do not mention)\n"
+                 "output_file: /tmp/tasks/ab5e6bea66dbee1fc.output"}]}]}}
+AGENT_DONE = {"type": "user", "message": {"role": "user", "content":
+    "<task-notification>\n<task-id>ab5e6bea66dbee1fc</task-id>\n"
+    "<status>completed</status>\n</task-notification>"}}
+AGENT_KILL = {"type": "assistant", "message": {"content": [
+    {"type": "tool_use", "name": "TaskStop",
+     "input": {"task_id": "ab5e6bea66dbee1fc"}}]}}
+
+
+def test_stop_with_running_background_agent_stays_green(tmp_path):
+    assert _stop(tmp_path, [AGENT_START], time.time()) == "green"
+
+
+def test_stop_after_background_agent_finished_is_red(tmp_path):
+    assert _stop(tmp_path, [AGENT_START, AGENT_DONE], time.time()) == "red"
+
+
+def test_stop_after_background_agent_killed_is_red(tmp_path):
+    assert _stop(tmp_path, [AGENT_START, AGENT_KILL], time.time()) == "red"

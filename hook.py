@@ -10,6 +10,8 @@ from state import event_to_state
 from store import write_state, delete_state, read_state
 
 TASK_STARTED = re.compile(r"^Command running in background with ID: (\w+)\.")
+AGENT_STARTED = re.compile(
+    r"^Async agent launched successfully\..*?\bagentId: (\w+)", re.S)
 TASK_DONE = re.compile(r"<task-id>(\w+)</task-id>")
 
 
@@ -32,7 +34,7 @@ def _scan_entry(entry, started, ended):
             continue
         if item.get("type") == "tool_result":
             for text in _tool_result_texts(item):
-                match = TASK_STARTED.match(text)
+                match = TASK_STARTED.match(text) or AGENT_STARTED.match(text)
                 if match:
                     started.add(match.group(1))
         elif item.get("type") == "tool_use" and item.get("name") == "TaskStop":
@@ -44,10 +46,11 @@ def _scan_entry(entry, started, ended):
 def has_pending_task(transcript_path):
     """True when a background task was launched but has not ended.
 
-    Background Bash commands fire no hooks while they run, so at Stop time the
-    transcript is the only record: a launch leaves "Command running in
-    background with ID: x" in a tool result, completion injects a
-    <task-id>x</task-id> notification, and a kill is a TaskStop tool call.
+    Background Bash commands and async sub-agents fire no hooks while they
+    run, so at Stop time the transcript is the only record: a launch leaves
+    "Command running in background with ID: x" (Bash) or "Async agent launched
+    successfully. ... agentId: x" (Agent) in a tool result, completion injects
+    a <task-id>x</task-id> notification, and a kill is a TaskStop tool call.
     """
     if not transcript_path:
         return False
@@ -57,7 +60,8 @@ def has_pending_task(transcript_path):
             for line in f:
                 if "task-id>" in line:
                     ended.update(TASK_DONE.findall(line))
-                if "Command running in background" in line or "TaskStop" in line:
+                if "Command running in background" in line \
+                        or "Async agent launched" in line or "TaskStop" in line:
                     try:
                         _scan_entry(json.loads(line), started, ended)
                     except ValueError:
