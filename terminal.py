@@ -83,6 +83,20 @@ def script(terminal):
     return None
 
 
+def most_urgent(rows):
+    """Terminal of the first row we can actually raise, or None.
+
+    build_view already sorts rows most-urgent first, so the first focusable
+    one is the target; a session in an unscriptable terminal is skipped rather
+    than swallowing the click.
+    """
+    for _, session in rows:
+        terminal = session.get("terminal")
+        if script(terminal):
+            return terminal
+    return None
+
+
 def focus(terminal):
     """Bring the session's terminal window to the front. Best effort."""
     source = script(terminal)
