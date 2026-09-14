@@ -13,7 +13,7 @@ def state_dir():
 
 
 def write_state(session_id, project, state, reason, now, directory=None,
-                origin=None, main_state=None):
+                origin=None, main_state=None, terminal=None):
     directory = Path(directory) if directory is not None else state_dir()
     final = directory / f"{session_id}.json"
     tmp = directory / f".{session_id}.json.tmp"
@@ -25,6 +25,7 @@ def write_state(session_id, project, state, reason, now, directory=None,
         "updated": int(now),
         "origin": origin,  # agent_id that wrote this, or None for the main thread
         "main_state": main_state,  # last state the main thread was in
+        "terminal": terminal,  # terminal window to raise when the row is clicked
     }
     tmp.write_text(json.dumps(data))
     os.replace(tmp, final)  # atomic rename

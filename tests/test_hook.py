@@ -1,7 +1,7 @@
 import json
 import time
 from hook import handle
-from store import load_sessions
+from store import load_sessions, read_state
 
 
 def test_handle_writes_green_with_project_from_cwd(tmp_path):
@@ -250,3 +250,36 @@ def test_stop_after_background_agent_finished_is_red(tmp_path):
 
 def test_stop_after_background_agent_killed_is_red(tmp_path):
     assert _stop(tmp_path, [AGENT_START, AGENT_KILL], time.time()) == "red"
+
+
+def test_terminal_is_recorded_and_reused(tmp_path, monkeypatch):
+    monkeypatch.setenv("TERM_PROGRAM", "iTerm.app")
+    monkeypatch.setenv("ITERM_SESSION_ID", "w0t0p0:GUID-1")
+    handle({"session_id": "s", "cwd": "/p", "hook_event_name": "SessionStart"},
+           1000, tmp_path)
+    assert read_state("s", directory=tmp_path)["terminal"]["session"] == "w0t0p0:GUID-1"
+
+    # later events keep the identity without paying for detection again
+    monkeypatch.delenv("TERM_PROGRAM")
+    handle({"session_id": "s", "cwd": "/p", "hook_event_name": "PreToolUse"},
+           1001, tmp_path)
+    assert read_state("s", directory=tmp_path)["terminal"]["session"] == "w0t0p0:GUID-1"
+
+
+def test_session_start_redetects_the_terminal(tmp_path, monkeypatch):
+    monkeypatch.setenv("TERM_PROGRAM", "iTerm.app")
+    monkeypatch.setenv("ITERM_SESSION_ID", "w0t0p0:OLD")
+    handle({"session_id": "s", "cwd": "/p", "hook_event_name": "SessionStart"},
+           1000, tmp_path)
+    # a resume runs the same session in a different window
+    monkeypatch.setenv("ITERM_SESSION_ID", "w0t0p0:NEW")
+    handle({"session_id": "s", "cwd": "/p", "hook_event_name": "SessionStart"},
+           2000, tmp_path)
+    assert read_state("s", directory=tmp_path)["terminal"]["session"] == "w0t0p0:NEW"
+
+
+def test_terminal_is_none_outside_a_terminal(tmp_path, monkeypatch):
+    monkeypatch.delenv("TERM_PROGRAM", raising=False)
+    handle({"session_id": "s", "cwd": "/p", "hook_event_name": "SessionStart"},
+           1000, tmp_path)
+    assert read_state("s", directory=tmp_path)["terminal"] is None

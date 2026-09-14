@@ -51,11 +51,13 @@ def test_build_view_counts_and_sort():
     ]
     title, rows = build_view(sessions, now)
     assert title == "🟢1 🟡1 🔴1 💀1"
-    assert rows[0].startswith("🟡") and "web" in rows[0]
-    assert rows[1].startswith("🔴") and "docs" in rows[1]
-    assert rows[2].startswith("🟢") and "api" in rows[2]
-    assert rows[3].startswith("💀") and "old" in rows[3]
-    assert rows[0] == "🟡  web — needs you (2m)"
+    labels = [label for label, _ in rows]
+    assert labels[0].startswith("🟡") and "web" in labels[0]
+    assert labels[1].startswith("🔴") and "docs" in labels[1]
+    assert labels[2].startswith("🟢") and "api" in labels[2]
+    assert labels[3].startswith("💀") and "old" in labels[3]
+    assert labels[0] == "🟡  web — needs you (2m)"
+    assert rows[0][1] is sessions[2]  # the row carries its session
 
 
 def test_build_view_tiebreak_recent_first():
@@ -65,8 +67,8 @@ def test_build_view_tiebreak_recent_first():
         {"project": "newer", "state": "green", "updated": now - 10},
     ]
     _, rows = build_view(sessions, now)
-    assert "newer" in rows[0]
-    assert "older" in rows[1]
+    assert "newer" in rows[0][0]
+    assert "older" in rows[1][0]
 
 
 from state import dominant_state

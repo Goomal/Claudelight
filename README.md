@@ -18,6 +18,10 @@ With no active sessions the icon falls back to a plain `🚦`.
 
 Click the icon to drop down the per-session list — each row shows the project,
 its state, and how long since it last changed, sorted most-urgent first.
+**Click a row to jump to that session**: its terminal window and tab come to
+the front. This works for iTerm2 and Terminal.app; sessions in any other
+terminal still list, but their row is greyed out because there is no way to
+target their window.
 
 **Sub-agents.** A session's sub-agents share its session id and run alongside
 the main thread, so one session is still one row. Their activity keeps the row

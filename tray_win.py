@@ -42,7 +42,7 @@ def _clear_stale(icon, stale):
 
 
 def _build_menu(rows, stale, icon):
-    items = [pystray.MenuItem(row, None, enabled=False) for row in rows]
+    items = [pystray.MenuItem(label, None, enabled=False) for label, _ in rows]
     if items:
         items.append(pystray.Menu.SEPARATOR)
     if stale:

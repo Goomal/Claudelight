@@ -8,6 +8,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from state import event_to_state
 from store import write_state, delete_state, read_state
+from terminal import detect
 
 TASK_STARTED = re.compile(r"^Command running in background with ID: (\w+)\.")
 AGENT_STARTED = re.compile(
@@ -114,9 +115,14 @@ def handle(payload, now, directory=None):
             return  # a sub-agent's churn can't answer someone else's prompt
 
     main_state = (current or {}).get("main_state") if origin else state
+    # Detected once per session, and again on SessionStart because a resumed
+    # session is often a different window from the one that first wrote it.
+    terminal = (current or {}).get("terminal")
+    if terminal is None or payload.get("hook_event_name") == "SessionStart":
+        terminal = detect()
     write_state(session_id, project_name(payload, current, agent_id), state,
                 payload.get("hook_event_name"), now, directory, origin=origin,
-                main_state=main_state)
+                main_state=main_state, terminal=terminal)
 
 
 def main():

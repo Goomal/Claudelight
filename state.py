@@ -79,7 +79,7 @@ def stale_ids(sessions, now):
 
 
 def build_view(sessions, now):
-    """Pure transform: sessions -> (menu bar title, sorted row strings)."""
+    """Pure transform: sessions -> (title, sorted (row label, session) pairs)."""
     display = [(display_state(s, now), s) for s in sessions]
 
     counts = {}
@@ -90,7 +90,7 @@ def build_view(sessions, now):
 
     display.sort(key=lambda ds: (URGENCY[ds[0]], -ds[1]["updated"]))
     rows = [
-        f"{EMOJI[state]}  {s['project']} — {WORD[state]} ({format_age(now - s['updated'])})"
+        (f"{EMOJI[state]}  {s['project']} — {WORD[state]} ({format_age(now - s['updated'])})", s)
         for state, s in display
     ]
     return title, rows
