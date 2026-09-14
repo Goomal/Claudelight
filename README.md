@@ -22,7 +22,10 @@ its state, and how long since it last changed, sorted most-urgent first.
 the front. This works for iTerm2 and Terminal.app; sessions in any other
 terminal still list, but their row is greyed out because there is no way to
 target their window. **Focus most urgent** sits above the list and jumps
-straight to the top row — the 🟡 you need to answer, when there is one.
+straight to the top row — the 🟡 you need to answer, when there is one, and
+**⌃⌥⌘J** does the same from any app without opening the menu at all. The chord
+needs no Accessibility grant; if another app already owns it, the menu item
+simply stops advertising it.
 
 **Sub-agents.** A session's sub-agents share its session id and run alongside
 the main thread, so one session is still one row. Their activity keeps the row

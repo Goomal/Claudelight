@@ -3,6 +3,7 @@ import time
 
 import rumps
 
+import hotkey_mac
 from state import EMOJI, build_view, stale_ids
 from store import delete_state, load_sessions
 from terminal import focus, most_urgent, script
@@ -12,9 +13,17 @@ class Claudelight(rumps.App):
     def __init__(self):
         super().__init__("🚦", quit_button=None)
         self._stale = []
+        self._target = None  # terminal the most urgent session lives in
+        # Advertise the chord on the menu item only if macOS actually gave it
+        # to us — another app may already own it.
+        self._chord = f"  {hotkey_mac.CHORD}" \
+            if hotkey_mac.install(self.focus_urgent) else ""
         self._timer = rumps.Timer(self.refresh, 1)
         self._timer.start()
         self.refresh(None)
+
+    def focus_urgent(self, _=None):
+        focus(self._target)
 
     def clear_stale(self, _):
         for session_id in self._stale:
@@ -31,10 +40,10 @@ class Claudelight(rumps.App):
         self._stale = stale_ids(sessions, now)
         self.title = title
         self.menu.clear()
-        target = most_urgent(rows)
-        if target:
-            self.menu.add(rumps.MenuItem("Focus most urgent",
-                                         callback=lambda _, t=target: focus(t)))
+        self._target = most_urgent(rows)
+        if self._target:
+            self.menu.add(rumps.MenuItem(f"Focus most urgent{self._chord}",
+                                         callback=self.focus_urgent))
             self.menu.add(rumps.separator)
         for label, session in rows:
             terminal = session.get("terminal")
