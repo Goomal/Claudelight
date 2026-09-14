@@ -8,9 +8,9 @@ swallows the chord so it never reaches whatever you were typing in.
 import ctypes
 import ctypes.util
 
-CHORD = "⌃⌥⌘J"
-_KEY_J = 38  # kVK_ANSI_J
-_CONTROL, _OPTION, _COMMAND = 0x1000, 0x0800, 0x0100  # Carbon modifier masks
+CHORD = "⌃⌘⇥"
+_KEY_TAB = 48  # kVK_Tab
+_CONTROL, _COMMAND = 0x1000, 0x0100  # Carbon modifier masks
 _KEYBOARD_CLASS = 0x6B657962  # 'keyb'
 _HOTKEY_PRESSED = 5
 _SIGNATURE = 0x636C6874  # 'clht'
@@ -71,7 +71,7 @@ def install(callback):
                                None, None) != 0:
         return False
     ref = ctypes.c_void_p()
-    if lib.RegisterEventHotKey(_KEY_J, _CONTROL | _OPTION | _COMMAND,
+    if lib.RegisterEventHotKey(_KEY_TAB, _CONTROL | _COMMAND,
                                _EventHotKeyID(_SIGNATURE, 1), target, 0,
                                ctypes.byref(ref)) != 0:
         return False  # another app already owns the chord
