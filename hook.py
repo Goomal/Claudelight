@@ -10,10 +10,20 @@ from state import event_to_state
 from store import write_state, delete_state, read_state
 from terminal import detect
 
-TASK_STARTED = re.compile(r"^Command running in background with ID: (\w+)\.")
-AGENT_STARTED = re.compile(
-    r"^Async agent launched successfully\..*?\bagentId: (\w+)", re.S)
-TASK_DONE = re.compile(r"<task-id>(\w+)</task-id>")
+LAUNCHES = (
+    re.compile(r"^Command running in background with ID: (\w+)\."),
+    re.compile(r"^Command did not complete within .*? moved to the background "
+               r"\(ID: (\w+)\)"),
+    re.compile(r"^Async agent launched successfully\..*?\bagentId: (\w+)", re.S),
+    re.compile(r"^Monitor started \(task (\w+),"),
+)
+LAUNCH_MARKERS = ("Command running in background", "moved to the background",
+                  "Async agent launched", "Monitor started")
+# Monitor events carry their task's id too; only a final <status> or the
+# expiry notice ends the task.
+TASK_DONE = re.compile(r"<task-id>(\w+)</task-id>"
+                       r"(?:(?!</task-notification>).)*?"
+                       r"(?:<status>|\[Monitor expired)", re.S)
 
 
 def _tool_result_texts(item):
@@ -35,9 +45,10 @@ def _scan_entry(entry, started, ended):
             continue
         if item.get("type") == "tool_result":
             for text in _tool_result_texts(item):
-                match = TASK_STARTED.match(text) or AGENT_STARTED.match(text)
-                if match:
-                    started.add(match.group(1))
+                for launch in LAUNCHES:
+                    match = launch.match(text)
+                    if match:
+                        started.add(match.group(1))
         elif item.get("type") == "tool_use" and item.get("name") == "TaskStop":
             task_id = (item.get("input") or {}).get("task_id")
             if task_id:
@@ -47,11 +58,11 @@ def _scan_entry(entry, started, ended):
 def has_pending_task(transcript_path):
     """True when a background task was launched but has not ended.
 
-    Background Bash commands and async sub-agents fire no hooks while they
+    Background Bash commands (launched so, or moved there after outliving
+    their timeout), async sub-agents and Monitors fire no hooks while they
     run, so at Stop time the transcript is the only record: a launch leaves
-    "Command running in background with ID: x" (Bash) or "Async agent launched
-    successfully. ... agentId: x" (Agent) in a tool result, completion injects
-    a <task-id>x</task-id> notification, and a kill is a TaskStop tool call.
+    one of LAUNCHES in a tool result, completion injects a <task-id>x</task-id>
+    notification, and a kill is a TaskStop tool call.
     """
     if not transcript_path:
         return False
@@ -61,8 +72,8 @@ def has_pending_task(transcript_path):
             for line in f:
                 if "task-id>" in line:
                     ended.update(TASK_DONE.findall(line))
-                if "Command running in background" in line \
-                        or "Async agent launched" in line or "TaskStop" in line:
+                if "TaskStop" in line \
+                        or any(marker in line for marker in LAUNCH_MARKERS):
                     try:
                         _scan_entry(json.loads(line), started, ended)
                     except ValueError:

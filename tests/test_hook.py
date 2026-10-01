@@ -252,6 +252,61 @@ def test_stop_after_background_agent_killed_is_red(tmp_path):
     assert _stop(tmp_path, [AGENT_START, AGENT_KILL], time.time()) == "red"
 
 
+# --- a foreground command that outlives its timeout is moved to the background
+# with its own launch marker, and a Monitor is a background task too. Monitor
+# events also carry its <task-id>, but only a notification with a <status>, or
+# the expiry notice, ends it. Shapes mirror live captures (Claude Code 2.1.286).
+
+def _launch(text):
+    return {"type": "user", "message": {"role": "user", "content": [
+        {"type": "tool_result", "tool_use_id": "t3", "content": text}]}}
+
+
+def _notify(body):
+    return {"type": "user", "message": {"role": "user", "content":
+        f"<task-notification>\n{body}\n</task-notification>"}}
+
+
+MOVED_START = _launch(
+    "Command did not complete within its 120s timeout and was moved to the "
+    "background (ID: bbl98bwaz). Output is being written to: "
+    "/tmp/tasks/bbl98bwaz.output. You will be notified when it completes.")
+MOVED_DONE = _notify("<task-id>bbl98bwaz</task-id>\n<status>completed</status>")
+MONITOR_START = _launch(
+    "Monitor started (task by7ivjc3u, expires in 30m unless the source ends "
+    "first; you get one notice at expiry — re-arm if you still need the watch).")
+MONITOR_EVENT = _notify(
+    "<task-id>by7ivjc3u</task-id>\n<summary>Monitor event: \"tests\"</summary>\n"
+    "<event>PASSED tests/test_a.py</event>")
+MONITOR_ENDED = _notify(
+    "<task-id>by7ivjc3u</task-id>\n<status>completed</status>\n"
+    "<summary>Monitor \"tests\" stream ended</summary>")
+MONITOR_EXPIRED = _notify(
+    "<task-id>by7ivjc3u</task-id>\n<summary>Monitor event: \"tests\"</summary>\n"
+    "<event>[Monitor expired after 30m with no events delivered.]</event>")
+
+
+def test_stop_with_command_moved_to_background_stays_green(tmp_path):
+    assert _stop(tmp_path, [MOVED_START], time.time()) == "green"
+
+
+def test_stop_after_moved_command_finished_is_red(tmp_path):
+    assert _stop(tmp_path, [MOVED_START, MOVED_DONE], time.time()) == "red"
+
+
+def test_stop_with_running_monitor_stays_green(tmp_path):
+    assert _stop(tmp_path, [MONITOR_START, MONITOR_EVENT], time.time()) == "green"
+
+
+def test_stop_after_monitor_stream_ended_is_red(tmp_path):
+    assert _stop(tmp_path, [MONITOR_START, MONITOR_EVENT, MONITOR_ENDED],
+                 time.time()) == "red"
+
+
+def test_stop_after_monitor_expired_is_red(tmp_path):
+    assert _stop(tmp_path, [MONITOR_START, MONITOR_EXPIRED], time.time()) == "red"
+
+
 def test_terminal_is_recorded_and_reused(tmp_path, monkeypatch):
     monkeypatch.setenv("TERM_PROGRAM", "iTerm.app")
     monkeypatch.setenv("ITERM_SESSION_ID", "w0t0p0:GUID-1")
